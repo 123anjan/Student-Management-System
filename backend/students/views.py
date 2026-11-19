@@ -56,8 +56,6 @@ class RolePermission(BasePermission):
             return True
         if role == "teacher" and ("grade" in view_name or "attendance" in view_name):
             return True
-        if role == "teacher" and "course" in view_name:
-            return True
         return False
 
 
@@ -90,8 +88,8 @@ class StudentViewSet(viewsets.ModelViewSet):
         qs = Student.objects.prefetch_related("courses")
         if not self.request.user.is_superuser:
             profile = getattr(self.request.user, "role_profile", None)
-            if profile and profile.role == "student" and profile.student_id:
-                qs = qs.filter(pk=profile.student_id)
+            if profile and profile.role == "student":
+                qs = qs.filter(pk=profile.student_id) if profile.student_id else qs.none()
         params = self.request.query_params
         if params.get("status"):
             qs = qs.filter(status=params["status"])
@@ -122,6 +120,10 @@ class GradeViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Grade.objects.all()
+        if not self.request.user.is_superuser:
+            profile = getattr(self.request.user, "role_profile", None)
+            if profile and profile.role == "student":
+                qs = qs.filter(student_id=profile.student_id) if profile.student_id else qs.none()
         params = self.request.query_params
         if params.get("course"):
             qs = qs.filter(course_id=params["course"])
@@ -139,6 +141,10 @@ class AttendanceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
     def get_queryset(self):
         qs = Attendance.objects.all()
+        if not self.request.user.is_superuser:
+            profile = getattr(self.request.user, "role_profile", None)
+            if profile and profile.role == "student":
+                qs = qs.filter(student_id=profile.student_id) if profile.student_id else qs.none()
         params = self.request.query_params
         for field in ("course", "student"):
             if params.get(field):
@@ -167,7 +173,7 @@ class AttendanceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 class DashboardView(APIView):
     """One endpoint that returns every number the dashboard screen needs."""
     permission_classes = [RolePermission]
-    allowed_roles = {"principal", "registrar", "teacher", "student", "accountant", "librarian"}
+    allowed_roles = {"principal", "registrar", "teacher"}
 
     def get(self, request):
         # attendance rate: "present" and "late" both count as attended

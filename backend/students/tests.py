@@ -39,6 +39,27 @@ class ApiTests(APITestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.data["role"], "principal")
 
+    def test_accountant_can_read_but_not_change_student_records(self):
+        user = get_user_model().objects.create_user("accounts", password="s3cret-pass")
+        user.role_profile.role = "accountant"
+        user.role_profile.save()
+        self.client.force_authenticate(user=user)
+        self.assertEqual(self.client.get("/api/students/").status_code, 200)
+        self.assertEqual(self.client.post("/api/students/", self.student_payload(), format="json").status_code, 403)
+
+    def test_student_only_sees_linked_student_records(self):
+        own = Student.objects.create(roll_no="S-OWN", first_name="Own", last_name="Student", email="own@example.edu")
+        other = Student.objects.create(roll_no="S-OTHER", first_name="Other", last_name="Student", email="other@example.edu")
+        user = get_user_model().objects.create_user("learner", password="s3cret-pass")
+        user.role_profile.role = "student"
+        user.role_profile.student = own
+        user.role_profile.save()
+        self.client.force_authenticate(user=user)
+        self.assertEqual([row["id"] for row in self.client.get("/api/students/").data], [own.id])
+        Grade.objects.create(student=own, course=self.course, title="Quiz", score=8, max_score=10)
+        Grade.objects.create(student=other, course=self.course, title="Quiz", score=4, max_score=10)
+        self.assertEqual([row["student"] for row in self.client.get("/api/grades/").data], [own.id])
+
     def test_bad_password_is_rejected_with_readable_error(self):
         res = self.client.post("/api/auth/login/", {"username": "admin", "password": "nope"}, format="json")
         self.assertEqual(res.status_code, 400)

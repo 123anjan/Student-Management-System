@@ -15,15 +15,20 @@ GitHub Pages can only serve static files, so the front-end has two modes, set in
 
 | `MODE` | Where data lives | Use it for |
 |---|---|---|
-| `"demo"` | The visitor's browser (localStorage), via a built-in fake server | The live GitHub Pages site. Login accounts:
+| `"demo"` | The visitor's browser (localStorage), via a built-in fake server | The live GitHub Pages site. |
+| `"live"` | The Django REST API and its database | Real use, local or on your own server |
+
+Demo accounts (the password follows the username as `role123`, except the legacy admin):
+
 - `admin` / `admin123` — Principal / Head
 - `principal` / `principal123` — Principal / Head
 - `registrar` / `registrar123` — Admissions / Registrar
 - `teacher` / `teacher123` — Teacher
 - `student` / `student123` — Student
 - `accountant` / `accountant123` — Accountant
-- `librarian` / `librarian123` — Librarian |
-| `"live"` | The Django REST API and its database | Real use, local or on your own server |
+- `librarian` / `librarian123` — Librarian
+
+Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, and principal reports. Admissions, finance, and library portal data is demo-only and saved in the current browser; the Django API manages the shared student, course, attendance, and grade records.
 
 The screens never know which mode is active; they call `api.js`, which picks the right data source. Read [`docs/UNDERSTANDING.md`](docs/UNDERSTANDING.md) for the full explanation.
 
@@ -41,7 +46,7 @@ student-management-system/
 │           ├── demo-store.js  fake backend inside the browser
 │           ├── app.js         login, layout, router
 │           ├── ui.js, charts.js, icons.js, grading.js, errors.js
-│           └── views/         dashboard, students, courses, attendance, grades
+│           └── views/         shared and role-specific workspaces
 ├── backend/                   <- Django REST API
 │   ├── manage.py, requirements.txt, .env.example
 │   ├── config/                settings, urls, wsgi
@@ -132,5 +137,5 @@ All routes except login need the header `Authorization: Token <key>`.
 ## Honest limitations
 
 - Demo mode data is per-browser and not secure; never put real student data in it.
-- One admin role only; there are no separate teacher/student logins yet.
+- Admissions, fee ledgers, and library circulation are demo-only and are not yet persisted by the Django API. Do not use the demo accounts or sample records for real student or payment data.
 - Lists are paginated in the browser, which is fine for hundreds of students. For many thousands, add server-side pagination.

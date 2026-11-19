@@ -359,7 +359,7 @@ export const demoApi = {
       return clone(db.courses.map((c) => ({ ...c, student_count: db.students.filter((s) => s.courses.includes(c.id)).length })));
     },
     async create(data) {
-      requireDemoRole(["principal", "registrar", "teacher"]);
+      requireDemoRole(["principal", "registrar"]);
       await delay();
       load();
       const row = { id: nextId("courses"), ...cleanCourse(data) };

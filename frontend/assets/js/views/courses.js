@@ -6,7 +6,7 @@ import { ui, esc, field, pageHeader, skeleton, emptyState, openModal, confirmDia
 
 export async function render({ el, stale, mount }) {
   el.innerHTML = skeleton(3);
-  const canManage = ["principal", "registrar", "teacher"].includes(api.role());
+  const canManage = ["principal", "registrar"].includes(api.role());
   let courses = await api.courses.list();
   if (stale()) return;
 

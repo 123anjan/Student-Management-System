@@ -18,15 +18,29 @@ const ROUTES = {
   "/courses": { label: "Courses", icon: "book", load: () => import("./views/courses.js") },
   "/attendance": { label: "Attendance", icon: "calendar", load: () => import("./views/attendance.js") },
   "/grades": { label: "Grades", icon: "award", load: () => import("./views/grades.js") },
+  "/admissions": { label: "Admissions", icon: "users", load: () => import("./views/admissions.js") },
+  "/finance": { label: "Fee management", icon: "award", load: () => import("./views/finance.js") },
+  "/library": { label: "Library", icon: "book", load: () => import("./views/library.js") },
+  "/teaching": { label: "Teaching workspace", icon: "dashboard", load: () => import("./views/teaching.js") },
+  "/my-records": { label: "My records", icon: "users", load: () => import("./views/my-records.js") },
+  "/reports": { label: "Leadership reports", icon: "dashboard", load: () => import("./views/reports.js") },
 };
 
 const ROLE_ROUTES = {
   principal: Object.keys(ROUTES),
-  teacher: ["/dashboard", "/students", "/courses", "/attendance", "/grades"],
-  student: ["/dashboard", "/courses", "/attendance", "/grades"],
-  registrar: ["/dashboard", "/students", "/courses"],
-  accountant: ["/dashboard", "/students"],
-  librarian: ["/dashboard", "/courses"],
+  teacher: ["/teaching", "/students", "/courses", "/attendance", "/grades"],
+  student: ["/dashboard", "/courses", "/attendance", "/grades", "/my-records"],
+  registrar: ["/dashboard", "/students", "/courses", "/admissions"],
+  accountant: ["/finance"],
+  librarian: ["/library", "/courses"],
+};
+
+const ROLE_HOME = {
+  teacher: "/teaching",
+  student: "/my-records",
+  registrar: "/admissions",
+  accountant: "/finance",
+  librarian: "/library",
 };
 
 const root = document.getElementById("app");
@@ -104,7 +118,7 @@ function showLogin() {
     btn.textContent = "Signing in...";
     try {
       await api.auth.login(form.username.value.trim(), form.password.value);
-      location.hash = "#/dashboard";
+      location.hash = `#${ROLE_HOME[api.role()] || "/dashboard"}`;
       showShell();
     } catch (ex) {
       err.textContent = ex.message;
@@ -200,6 +214,10 @@ async function route() {
   const path = location.hash.replace(/^#/, "") || "/dashboard";
   const role = api.role();
   const allowedRoutes = new Set(ROLE_ROUTES[role] || ["/dashboard"]);
+  if ((!location.hash || path === "/dashboard") && ROLE_HOME[role]) {
+    location.hash = `#${ROLE_HOME[role]}`;
+    return;
+  }
   if (!allowedRoutes.has(path)) {
     location.hash = "#/dashboard";
     return;
