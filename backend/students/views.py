@@ -17,9 +17,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
+from rest_framework.permissions import BasePermission
 
 from .grading import LETTERS, letter_for, percent
-from .models import Attendance, Course, Grade, Student
+from .models import Attendance, Course, Grade, Student, UserProfile
 from .serializers import (
     AttendanceBulkSerializer,
     AttendanceSerializer,
@@ -27,6 +28,37 @@ from .serializers import (
     GradeSerializer,
     StudentSerializer,
 )
+
+
+class RolePermission(BasePermission):
+    role_rules = set()
+
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser:
+            return True
+        profile = getattr(request.user, "role_profile", None)
+        role = getattr(profile, "role", None)
+        if role is None:
+            return False
+        allowed = getattr(view, "allowed_roles", self.role_rules)
+        if role not in allowed:
+            return False
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return True
+        view_name = view.__class__.__name__.lower()
+        if role == "principal":
+            return True
+        if role == "registrar" and "student" in view_name:
+            return True
+        if role == "registrar" and "course" in view_name:
+            return True
+        if role == "teacher" and ("grade" in view_name or "attendance" in view_name):
+            return True
+        if role == "teacher" and "course" in view_name:
+            return True
+        return False
 
 
 class LoginView(APIView):
@@ -42,16 +74,24 @@ class LoginView(APIView):
         serializer.is_valid(raise_exception=True)  # wrong password -> HTTP 400
         user = serializer.validated_data["user"]
         token, _ = Token.objects.get_or_create(user=user)
-        return Response({"username": user.username, "token": token.key})
+        profile = getattr(user, "role_profile", None)
+        role = profile.role if profile else ("principal" if user.is_superuser else "teacher")
+        return Response({"username": user.username, "token": token.key, "role": role})
 
 
 class StudentViewSet(viewsets.ModelViewSet):
     serializer_class = StudentSerializer
+    permission_classes = [RolePermission]
+    allowed_roles = {"principal", "registrar", "teacher", "accountant", "librarian", "student"}
 
     def get_queryset(self):
         # prefetch_related loads every student's courses in ONE extra query
         # instead of one query per student (avoids the "N+1 query" problem).
         qs = Student.objects.prefetch_related("courses")
+        if not self.request.user.is_superuser:
+            profile = getattr(self.request.user, "role_profile", None)
+            if profile and profile.role == "student" and profile.student_id:
+                qs = qs.filter(pk=profile.student_id)
         params = self.request.query_params
         if params.get("status"):
             qs = qs.filter(status=params["status"])
@@ -68,6 +108,8 @@ class StudentViewSet(viewsets.ModelViewSet):
 
 class CourseViewSet(viewsets.ModelViewSet):
     serializer_class = CourseSerializer
+    permission_classes = [RolePermission]
+    allowed_roles = {"principal", "registrar", "teacher", "accountant", "librarian", "student"}
 
     def get_queryset(self):
         return Course.objects.annotate(student_count=Count("students"))
@@ -75,6 +117,8 @@ class CourseViewSet(viewsets.ModelViewSet):
 
 class GradeViewSet(viewsets.ModelViewSet):
     serializer_class = GradeSerializer
+    permission_classes = [RolePermission]
+    allowed_roles = {"principal", "registrar", "teacher", "student"}
 
     def get_queryset(self):
         qs = Grade.objects.all()
@@ -90,6 +134,8 @@ class AttendanceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     """Read-only list plus a custom POST /attendance/bulk/ for saving."""
 
     serializer_class = AttendanceSerializer
+    permission_classes = [RolePermission]
+    allowed_roles = {"principal", "registrar", "teacher", "student"}
 
     def get_queryset(self):
         qs = Attendance.objects.all()
@@ -120,6 +166,8 @@ class AttendanceViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 
 class DashboardView(APIView):
     """One endpoint that returns every number the dashboard screen needs."""
+    permission_classes = [RolePermission]
+    allowed_roles = {"principal", "registrar", "teacher", "student", "accountant", "librarian"}
 
     def get(self, request):
         # attendance rate: "present" and "late" both count as attended

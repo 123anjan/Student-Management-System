@@ -12,6 +12,35 @@ from datetime import date
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
+
+class UserProfile(models.Model):
+    class Role(models.TextChoices):
+        PRINCIPAL = "principal", "Principal / Head"
+        REGISTRAR = "registrar", "Registrar"
+        TEACHER = "teacher", "Teacher"
+        STUDENT = "student", "Student"
+        ACCOUNTANT = "accountant", "Accountant"
+        LIBRARIAN = "librarian", "Librarian"
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="role_profile")
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.TEACHER)
+    student = models.OneToOneField("Student", on_delete=models.SET_NULL, null=True, blank=True, related_name="user_profile")
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_role_display()}"
+
+
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(
+            user=instance,
+            role=UserProfile.Role.PRINCIPAL if instance.is_superuser else UserProfile.Role.TEACHER,
+        )
 
 
 class Course(models.Model):

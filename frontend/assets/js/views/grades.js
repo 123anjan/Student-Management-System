@@ -7,6 +7,7 @@ import { letterFor, percent } from "../grading.js";
 
 export async function render({ el, stale, mount }) {
   el.innerHTML = skeleton(5);
+  const canManage = ["principal", "teacher"].includes(api.role());
   const [courses, students] = await Promise.all([api.courses.list(), api.students.list()]);
   if (stale()) return;
 
@@ -17,7 +18,7 @@ export async function render({ el, stale, mount }) {
     ${pageHeader(
       "Grades",
       "Record assessment scores. Letter grades are calculated automatically.",
-      `<button type="button" data-act="add" class="${ui.btnPrimary}" ${courses.length ? "" : "disabled"}>${icon("plus", 16)} Add grade</button>`
+      ${canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}" ${courses.length ? "" : "disabled"}>${icon("plus", 16)} Add grade</button>` : ""}`
     )}
     <div class="${ui.card} overflow-hidden">
       <div class="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 sm:flex-row sm:items-center">
@@ -81,8 +82,9 @@ export async function render({ el, stale, mount }) {
             <td class="px-4 py-3">${badge(letter, letter)}</td>
             <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">${fmtDate(g.date)}</td>
             <td class="px-4 py-3"><div class="flex justify-end gap-1">
+              ${canManage ? `
               <button type="button" data-act="edit" data-id="${g.id}" class="${ui.btnIcon}" aria-label="Edit grade">${icon("pencil", 16)}</button>
-              <button type="button" data-act="delete" data-id="${g.id}" class="${ui.btnIcon} hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" aria-label="Delete grade">${icon("trash", 16)}</button>
+              <button type="button" data-act="delete" data-id="${g.id}" class="${ui.btnIcon} hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" aria-label="Delete grade">${icon("trash", 16)}</button>` : ""}
             </div></td>
           </tr>`;
         })

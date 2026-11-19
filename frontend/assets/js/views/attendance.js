@@ -14,6 +14,7 @@ const OPTIONS = [
 
 export async function render({ el, stale, mount }) {
   el.innerHTML = skeleton(4);
+  const canManage = ["principal", "teacher"].includes(api.role());
   const [courses, students] = await Promise.all([api.courses.list(), api.students.list()]);
   if (stale()) return;
 
@@ -31,7 +32,7 @@ export async function render({ el, stale, mount }) {
         <input id="a-date" type="date" value="${sel.date}" max="${todayISO()}" class="${ui.input} sm:w-auto" aria-label="Date">
         <div class="flex gap-2 sm:ml-auto">
           <button type="button" data-act="all-present" class="${ui.btnGhost}">${icon("check", 16)} Mark all present</button>
-          <button type="button" data-act="save" class="${ui.btnPrimary}">Save attendance</button>
+          ${canManage ? `<button type="button" data-act="save" class="${ui.btnPrimary}">Save attendance</button>` : ""}
         </div>
       </div>
       <div id="a-body"></div>

@@ -11,7 +11,7 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 
-from students.models import Attendance, Course, Grade, Student
+from students.models import Attendance, Course, Grade, Student, UserProfile
 
 FIRST = ["Aarav", "Diya", "Rohan", "Ananya", "Kabir", "Isha", "Vihaan", "Meera", "Arjun", "Sneha", "Aditya", "Riya"]
 LAST = ["Sharma", "Das", "Mehta", "Banerjee", "Singh", "Roy", "Gupta", "Nair", "Patel", "Ghosh"]
@@ -41,6 +41,27 @@ class Command(BaseCommand):
         user.is_staff = user.is_superuser = True
         user.save()
         self.stdout.write(f"{'Created' if created else 'Updated'} admin user '{user.username}'.")
+
+        role_passwords = {
+            "principal": "principal123",
+            "registrar": "registrar123",
+            "teacher": "teacher123",
+            "student": "student123",
+            "accountant": "accountant123",
+            "librarian": "librarian123",
+        }
+        for username, password in role_passwords.items():
+            role_user, role_created = User.objects.get_or_create(username=username)
+            role_user.set_password(password)
+            role_user.is_staff = username in {"principal", "registrar", "teacher", "accountant", "librarian"}
+            role_user.is_superuser = username == "principal"
+            role_user.save()
+            profile, _ = UserProfile.objects.get_or_create(user=role_user)
+            profile.role = username
+            if username == "student" and Student.objects.exists():
+                profile.student = Student.objects.order_by("id").first()
+            profile.save()
+        self.stdout.write("Created or updated demo role accounts.")
 
         if Student.objects.exists() and not opts["force"]:
             raise CommandError("Students already exist; skipped sample data (use --force to add more).")

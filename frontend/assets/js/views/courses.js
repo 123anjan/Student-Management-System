@@ -6,6 +6,7 @@ import { ui, esc, field, pageHeader, skeleton, emptyState, openModal, confirmDia
 
 export async function render({ el, stale, mount }) {
   el.innerHTML = skeleton(3);
+  const canManage = ["principal", "registrar", "teacher"].includes(api.role());
   let courses = await api.courses.list();
   if (stale()) return;
 
@@ -13,7 +14,7 @@ export async function render({ el, stale, mount }) {
     ${pageHeader(
       "Courses",
       "The subjects students can enrol in.",
-      `<button type="button" data-act="add" class="${ui.btnPrimary}">${icon("plus", 16)} Add course</button>`
+      ${canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}">${icon("plus", 16)} Add course</button>` : ""}`
     )}
     <div id="c-grid"></div>
   `);
@@ -29,10 +30,10 @@ export async function render({ el, stale, mount }) {
         (c) => `<article class="${ui.card} flex flex-col p-5 transition hover:-translate-y-0.5 hover:shadow-md">
           <div class="flex items-start justify-between gap-3">
             <span class="rounded-lg bg-indigo-50 px-2.5 py-1 font-mono text-xs font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">${esc(c.code)}</span>
-            <div class="flex gap-1">
+            ${canManage ? `<div class="flex gap-1">
               <button type="button" data-act="edit" data-id="${c.id}" class="${ui.btnIcon}" aria-label="Edit ${esc(c.code)}">${icon("pencil", 16)}</button>
               <button type="button" data-act="delete" data-id="${c.id}" class="${ui.btnIcon} hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" aria-label="Delete ${esc(c.code)}">${icon("trash", 16)}</button>
-            </div>
+            </div>` : ""}
           </div>
           <h2 class="mt-3 text-base font-semibold leading-snug">${esc(c.name)}</h2>
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">${esc(c.instructor || "No instructor assigned")}</p>

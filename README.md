@@ -15,7 +15,14 @@ GitHub Pages can only serve static files, so the front-end has two modes, set in
 
 | `MODE` | Where data lives | Use it for |
 |---|---|---|
-| `"demo"` | The visitor's browser (localStorage), via a built-in fake server | The live GitHub Pages site. Login: `admin` / `admin123` |
+| `"demo"` | The visitor's browser (localStorage), via a built-in fake server | The live GitHub Pages site. Login accounts:
+- `admin` / `admin123` — Principal / Head
+- `principal` / `principal123` — Principal / Head
+- `registrar` / `registrar123` — Admissions / Registrar
+- `teacher` / `teacher123` — Teacher
+- `student` / `student123` — Student
+- `accountant` / `accountant123` — Accountant
+- `librarian` / `librarian123` — Librarian |
 | `"live"` | The Django REST API and its database | Real use, local or on your own server |
 
 The screens never know which mode is active; they call `api.js`, which picks the right data source. Read [`docs/UNDERSTANDING.md`](docs/UNDERSTANDING.md) for the full explanation.

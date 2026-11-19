@@ -11,6 +11,10 @@ from rest_framework import serializers
 from .models import Attendance, Course, Grade, Student
 
 
+class UserProfileSerializer(serializers.Serializer):
+    role = serializers.CharField()
+
+
 class CourseSerializer(serializers.ModelSerializer):
     student_count = serializers.SerializerMethodField()
 

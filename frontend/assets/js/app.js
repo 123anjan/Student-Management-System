@@ -20,6 +20,15 @@ const ROUTES = {
   "/grades": { label: "Grades", icon: "award", load: () => import("./views/grades.js") },
 };
 
+const ROLE_ROUTES = {
+  principal: Object.keys(ROUTES),
+  teacher: ["/dashboard", "/students", "/courses", "/attendance", "/grades"],
+  student: ["/dashboard", "/courses", "/attendance", "/grades"],
+  registrar: ["/dashboard", "/students", "/courses"],
+  accountant: ["/dashboard", "/students"],
+  librarian: ["/dashboard", "/courses"],
+};
+
 const root = document.getElementById("app");
 let navId = 0; // increases on every navigation; lets slow views detect they are outdated
 
@@ -64,7 +73,12 @@ function showLogin() {
           <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">Sign in to open your dashboard.</p>
 
           ${demo ? `<div class="mt-5 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-800 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-200">
-            <strong>Demo mode.</strong> Data stays in your browser. Use <code class="font-mono">admin</code> / <code class="font-mono">admin123</code>.</div>` : ""}
+            <strong>Demo mode.</strong> Data stays in your browser.<br>
+            Accounts: <code class="font-mono">admin</code> / <code class="font-mono">admin123</code>, or
+            <code class="font-mono">principal</code>, <code class="font-mono">registrar</code>,
+            <code class="font-mono">teacher</code>, <code class="font-mono">student</code>,
+            <code class="font-mono">accountant</code>, <code class="font-mono">librarian</code>
+            with the matching <code class="font-mono">role123</code> password.</div>` : ""}
 
           <form id="login" class="mt-6 space-y-4" novalidate>
             <div><label for="u" class="${ui.label}">Username</label>
@@ -106,6 +120,17 @@ function showLogin() {
 // ---------------------------------------------------------------------------
 function showShell() {
   const isDark = document.documentElement.classList.contains("dark");
+  const role = api.role();
+  const roleLabel = ({
+    principal: "Principal / Head",
+    registrar: "Registrar",
+    teacher: "Teacher",
+    student: "Student",
+    accountant: "Accountant",
+    librarian: "Librarian",
+  })[role] || role;
+  const allowedRoutes = new Set(ROLE_ROUTES[role] || ["/dashboard"]);
+  const visibleRoutes = Object.entries(ROUTES).filter(([path]) => allowedRoutes.has(path));
   const link = ([path, r]) => `
     <a href="#${path}" data-route="${path}" class="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
       ${icon(r.icon, 18)}<span>${r.label}</span></a>`;
@@ -118,12 +143,12 @@ function showShell() {
           <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-600 text-white">${icon("cap", 20)}</span>
           <span class="text-lg font-bold tracking-tight">${esc(CONFIG.APP_NAME)}</span>
         </div>
-        <nav class="flex-1 space-y-1 px-3 py-2" aria-label="Main">${Object.entries(ROUTES).map(link).join("")}</nav>
+        <nav class="flex-1 space-y-1 px-3 py-2" aria-label="Main">${visibleRoutes.map(link).join("")}</nav>
         <div class="space-y-2 border-t border-slate-200 p-3 dark:border-slate-800">
           ${api.mode === "demo" ? `<button type="button" id="reset-demo" class="${ui.btnGhost} w-full !justify-start !text-xs">${icon("reset", 14)} Reset demo data</button>` : ""}
           <div class="flex items-center gap-3 rounded-lg px-2 py-1.5">
             <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">${esc(api.auth.username().slice(0, 1).toUpperCase())}</span>
-            <div class="min-w-0 flex-1"><p class="truncate text-sm font-medium">${esc(api.auth.username())}</p><p class="text-xs text-slate-500 dark:text-slate-400">Administrator</p></div>
+            <div class="min-w-0 flex-1"><p class="truncate text-sm font-medium">${esc(api.auth.username())}</p><p class="text-xs text-slate-500 dark:text-slate-400">${esc(roleLabel)}</p></div>
             <button type="button" id="logout" class="${ui.btnIcon}" aria-label="Sign out" title="Sign out">${icon("logout", 18)}</button>
           </div>
         </div>
@@ -173,6 +198,12 @@ async function route() {
   const page = document.getElementById("page");
   if (!page) return;
   const path = location.hash.replace(/^#/, "") || "/dashboard";
+  const role = api.role();
+  const allowedRoutes = new Set(ROLE_ROUTES[role] || ["/dashboard"]);
+  if (!allowedRoutes.has(path)) {
+    location.hash = "#/dashboard";
+    return;
+  }
   const def = ROUTES[path];
   if (!def) {
     location.hash = "#/dashboard";

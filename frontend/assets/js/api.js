@@ -14,6 +14,7 @@ import { demoApi, resetDemoData } from "./demo-store.js";
 
 const TOKEN_KEY = "edutrack_token";
 const USER_KEY = "edutrack_user";
+const ROLE_KEY = "edutrack_role";
 
 const store = {
   get: (key) => {
@@ -30,6 +31,7 @@ const store = {
 function clearSession() {
   store.remove(TOKEN_KEY);
   store.remove(USER_KEY);
+  store.remove(ROLE_KEY);
 }
 
 // -----------------------------------------------------------------------------
@@ -100,6 +102,7 @@ const backend = CONFIG.MODE === "live" ? liveApi : demoApi;
 
 export const api = {
   mode: CONFIG.MODE,
+  role: () => store.get(ROLE_KEY) || (CONFIG.MODE === "demo" ? "principal" : ""),
   dashboard: backend.dashboard,
   students: backend.students,
   courses: backend.courses,
@@ -113,6 +116,7 @@ export const api = {
       const result = await backend.auth.login(username, password);
       store.set(TOKEN_KEY, result.token);
       store.set(USER_KEY, result.username || username);
+      store.set(ROLE_KEY, result.role || "principal");
     },
     logout: clearSession,
   },

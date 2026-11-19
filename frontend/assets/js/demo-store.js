@@ -49,6 +49,12 @@ function save() {
 
 const nextId = (table) => (db.seq[table] = (db.seq[table] || 0) + 1);
 
+function requireDemoRole(allowed) {
+  let role = "principal";
+  try { role = localStorage.getItem("edutrack_role") || role; } catch {}
+  if (!allowed.includes(role)) throw new ApiError("Your role does not have permission for this action.", 403);
+}
+
 export function resetDemoData() {
   db = seed();
   save();
@@ -251,12 +257,24 @@ export const demoApi = {
   auth: {
     async login(username, password) {
       await delay(250);
-      if (username === "admin" && password === "admin123") return { username: "admin", token: "demo-token" };
-      throw new ApiError("Wrong username or password. Demo login is admin / admin123.", 400);
+      const accounts = {
+        admin: ["admin123", "principal"],
+        principal: ["principal123", "principal"],
+        teacher: ["teacher123", "teacher"],
+        student: ["student123", "student"],
+        registrar: ["registrar123", "registrar"],
+        accountant: ["accountant123", "accountant"],
+        librarian: ["librarian123", "librarian"],
+      };
+      if (accounts[username]?.[0] === password) {
+        return { username, token: `demo-${accounts[username][1]}-token`, role: accounts[username][1] };
+      }
+      throw new ApiError("Wrong username or password.", 400);
     },
   },
 
   async dashboard() {
+    requireDemoRole(["principal", "registrar", "teacher", "student", "accountant", "librarian"]);
     await delay();
     load();
     const attended = db.attendance.filter((a) => a.status !== "absent").length;
@@ -295,10 +313,14 @@ export const demoApi = {
 
   students: {
     async list() {
+      requireDemoRole(["principal", "registrar", "teacher", "student", "accountant", "librarian"]);
       await delay();
-      return clone(load().students);
+      const role = localStorage.getItem("edutrack_role") || "principal";
+      const rows = load().students;
+      return clone(role === "student" ? rows.slice(0, 1) : rows);
     },
     async create(data) {
+      requireDemoRole(["principal", "registrar"]);
       await delay();
       load();
       const row = { id: nextId("students"), ...cleanStudent(data), created_at: new Date().toISOString() };
@@ -307,6 +329,7 @@ export const demoApi = {
       return clone(row);
     },
     async update(id, data) {
+      requireDemoRole(["principal", "registrar"]);
       await delay();
       load();
       const row = db.students.find((s) => s.id === Number(id));
@@ -316,6 +339,7 @@ export const demoApi = {
       return clone(row);
     },
     async remove(id) {
+      requireDemoRole(["principal", "registrar"]);
       await delay();
       load();
       const sid = Number(id);
@@ -335,6 +359,7 @@ export const demoApi = {
       return clone(db.courses.map((c) => ({ ...c, student_count: db.students.filter((s) => s.courses.includes(c.id)).length })));
     },
     async create(data) {
+      requireDemoRole(["principal", "registrar", "teacher"]);
       await delay();
       load();
       const row = { id: nextId("courses"), ...cleanCourse(data) };
@@ -343,6 +368,7 @@ export const demoApi = {
       return clone({ ...row, student_count: 0 });
     },
     async update(id, data) {
+      requireDemoRole(["principal", "registrar"]);
       await delay();
       load();
       const row = db.courses.find((c) => c.id === Number(id));
@@ -352,6 +378,7 @@ export const demoApi = {
       return clone(row);
     },
     async remove(id) {
+      requireDemoRole(["principal", "registrar"]);
       await delay();
       load();
       const cid = Number(id);
@@ -381,6 +408,7 @@ export const demoApi = {
     // One call saves a whole class for one day. Existing rows are updated
     // (upsert), so pressing Save twice never creates duplicates.
     async save({ course, date, records }) {
+      requireDemoRole(["principal", "teacher"]);
       await delay();
       load();
       if (!db.courses.some((c) => c.id === Number(course))) throw fieldError("course", "Select a valid course.");
@@ -404,9 +432,11 @@ export const demoApi = {
     async list({ course, student } = {}) {
       await delay();
       load();
-      return clone(db.grades.filter((g) => (!course || g.course === Number(course)) && (!student || g.student === Number(student))));
+      const role = localStorage.getItem("edutrack_role") || "principal";
+      return clone(db.grades.filter((g) => (!course || g.course === Number(course)) && (!student || g.student === Number(student)) && (role !== "student" || g.student === db.students[0]?.id)));
     },
     async create(data) {
+      requireDemoRole(["principal", "teacher"]);
       await delay();
       load();
       const row = { id: nextId("grades"), ...cleanGrade(data) };
@@ -415,6 +445,7 @@ export const demoApi = {
       return clone(row);
     },
     async update(id, data) {
+      requireDemoRole(["principal", "teacher"]);
       await delay();
       load();
       const row = db.grades.find((g) => g.id === Number(id));
@@ -424,6 +455,7 @@ export const demoApi = {
       return clone(row);
     },
     async remove(id) {
+      requireDemoRole(["principal", "teacher"]);
       await delay();
       load();
       if (!db.grades.some((g) => g.id === Number(id))) throw notFound();

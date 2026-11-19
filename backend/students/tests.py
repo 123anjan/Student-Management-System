@@ -11,7 +11,7 @@ from .views import LoginView
 
 class ApiTests(APITestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user("admin", password="s3cret-pass")
+        self.user = get_user_model().objects.create_superuser("admin", email="admin@example.com", password="s3cret-pass")
         self.course = Course.objects.create(code="CS101", name="Programming", credits=4)
         self.original_throttle_classes = LoginView.throttle_classes
         LoginView.throttle_classes = []
@@ -33,6 +33,11 @@ class ApiTests(APITestCase):
     # --- authentication ---
     def test_api_requires_login(self):
         self.assertEqual(self.client.get("/api/students/").status_code, 401)
+
+    def test_superuser_login_returns_principal_role(self):
+        res = self.client.post("/api/auth/login/", {"username": "admin", "password": "s3cret-pass"}, format="json")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data["role"], "principal")
 
     def test_bad_password_is_rejected_with_readable_error(self):
         res = self.client.post("/api/auth/login/", {"username": "admin", "password": "nope"}, format="json")
