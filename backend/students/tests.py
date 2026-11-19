@@ -6,12 +6,18 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APITestCase
 
 from .models import Attendance, Course, Grade, Student
+from .views import LoginView
 
 
 class ApiTests(APITestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user("admin", password="s3cret-pass")
         self.course = Course.objects.create(code="CS101", name="Programming", credits=4)
+        self.original_throttle_classes = LoginView.throttle_classes
+        LoginView.throttle_classes = []
+
+    def tearDown(self):
+        LoginView.throttle_classes = self.original_throttle_classes
 
     def login(self):
         res = self.client.post("/api/auth/login/", {"username": "admin", "password": "s3cret-pass"}, format="json")

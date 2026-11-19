@@ -81,9 +81,8 @@ Commit the generated `backend/students/migrations/0001_initial.py` to Git.
 ## 3. Put the front-end live on GitHub Pages
 
 1. Push this project to your GitHub repository (`main` branch).
-2. Repository **Settings -> Pages -> Source: GitHub Actions**.
-3. The workflow in `.github/workflows/pages.yml` publishes `frontend/` on every push.
-4. Your site appears at `https://<your-username>.github.io/<repo-name>/`.
+2. The workflow in `.github/workflows/pages.yml` enables Pages and publishes `frontend/` on every push.
+3. Live site: <https://123anjan.github.io/Student-Management-System/>.
 
 Keep `MODE: "demo"` for this deployment.
 
