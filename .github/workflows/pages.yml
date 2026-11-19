@@ -1,0 +1,38 @@
+# Publishes the ./frontend folder to GitHub Pages every time you push to "main".
+#
+# ONE-TIME SETUP on GitHub:  Repository -> Settings -> Pages -> Build and
+# deployment -> Source: "GitHub Actions".  After that, every push redeploys.
+#
+# Only the front-end goes live (GitHub Pages hosts static files only). It runs
+# in "demo" mode, saving data in the visitor's browser. The Django backend is
+# deployed separately (see README.md).
+name: Deploy front-end to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # also lets you run it by hand from the Actions tab
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend
+      - id: deployment
+        uses: actions/deploy-pages@v4

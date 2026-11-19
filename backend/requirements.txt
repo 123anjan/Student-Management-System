@@ -1,0 +1,9 @@
+# Install with:  pip install -r requirements.txt
+Django>=5.2,<5.3                  # the web framework (5.2 is a Long-Term-Support release)
+djangorestframework>=3.15,<4      # turns Django models into a REST API
+django-cors-headers>=4.4,<5       # lets a front-end on ANOTHER domain (GitHub Pages) call this API
+whitenoise>=6.7,<7                # serves static files (admin CSS, and optionally the front-end)
+gunicorn>=22                      # production web server (Linux hosting / VPS)
+
+# Only if you use MySQL (Hostinger's default database). Needs system MySQL headers:
+# mysqlclient>=2.2

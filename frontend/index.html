@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EduTrack - Student Management System</title>
+    <meta name="description" content="Modern student management system: students, courses, attendance and grades." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%234f46e5'/%3E%3Cpath d='M16 8 6 13l10 5 10-5-10-5Zm-6 9v4c3 3 9 3 12 0v-4l-6 3-6-3Z' fill='white'/%3E%3C/svg%3E" />
+
+    <!-- STEP 1: apply the saved theme BEFORE the page paints, so dark-mode
+         users never see a white flash. -->
+    <script>
+      try {
+        var saved = localStorage.getItem("edutrack_theme");
+        var dark = saved ? saved === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+        if (dark) document.documentElement.classList.add("dark");
+      } catch (e) {}
+    </script>
+
+    <!-- STEP 2: font. Inter is the standard "modern dashboard" typeface. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- STEP 3: Tailwind CSS via its CDN ("Play CDN"). Great for learning and
+         demos because it needs no build step. For a high-traffic production
+         site, compile Tailwind with its CLI instead (see docs/UNDERSTANDING.md). -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class", // dark styles apply when <html class="dark">
+        theme: { extend: { fontFamily: { sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"] } } },
+      };
+    </script>
+
+    <link rel="stylesheet" href="./assets/css/styles.css" />
+  </head>
+
+  <body class="bg-slate-50 font-sans text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100">
+    <!-- The whole application is drawn into this element by app.js -->
+    <div id="app"></div>
+
+    <noscript>
+      <p style="padding:2rem;font-family:sans-serif">This application needs JavaScript enabled.</p>
+    </noscript>
+
+    <!-- type="module" lets us split the code into several files with import/export -->
+    <script type="module" src="./assets/js/app.js"></script>
+  </body>
+</html>
