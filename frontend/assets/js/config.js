@@ -3,8 +3,9 @@
 // =============================================================================
 //
 //  MODE = "demo"  -> No server needed. Data is stored in the visitor's browser
-//                    (localStorage). This is what GitHub Pages can host, because
-//                    GitHub Pages only serves static files (HTML/CSS/JS).
+//                    (localStorage; notice PDF attachments use IndexedDB).
+//                    This is what GitHub Pages can host, because it only serves
+//                    static files (HTML/CSS/JS).
 //
 //  MODE = "live"  -> The front-end talks to the Django REST API over HTTP.
 //                    Use this when the backend is running (locally or on Hostinger).

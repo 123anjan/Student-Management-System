@@ -45,7 +45,7 @@ Screens call `api.students.list()`. `api.js` decides:
 This is the **adapter pattern**: one interface, two implementations. It also converts every failure into one `ApiError` type, so the UI shows errors the same way in both modes. If the server answers 401 (token expired), it fires an `auth:expired` event and the app returns to the login page.
 
 ### `demo-store.js` - the fake backend
-Keeps four tables (students, courses, attendance, grades) as JSON in `localStorage`, creates 24 sample students on first visit with a seeded random generator (same data for everyone), and **re-implements the server rules**: required fields, unique roll number/email, score not above maximum, cascade deletes. It was tested with 23 automated checks.
+Keeps four tables (students, courses, attendance, grades) as JSON in `localStorage`, creates 24 sample students on first visit with a seeded random generator (same data for everyone), and **re-implements the server rules**: required fields, unique roll number/email, score not above maximum, cascade deletes. It was tested with 23 automated checks. Demo notice metadata is stored in `localStorage`; attached PDFs use IndexedDB in the same browser and are not shared across browsers.
 
 ### `app.js` - login, layout, router
 - **Router:** the URL hash (`#/students`) picks the screen. Hash routing is used because GitHub Pages cannot rewrite URLs; a path like `/students` would show a 404 on refresh.

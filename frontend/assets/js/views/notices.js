@@ -88,12 +88,11 @@ export async function render({ mount, stale }) {
         ${field({ label: "Notice title", name: "title", required: true, placeholder: "Announcement title", span: "sm:col-span-2" })}
         ${field({ label: "Category", name: "category", required: true, placeholder: "Academics, Campus, Events..." })}
         ${field({ label: "Notice text", name: "body", type: "textarea", required: true, placeholder: "Write the full notice here.", span: "sm:col-span-2" })}
-        ${role === "principal" && api.mode === "live" ? `<div class="sm:col-span-2">
+        ${role === "principal" ? `<div class="sm:col-span-2">
           <label for="notice-pdf" class="${ui.label}">Attach PDF (optional)</label>
           <input id="notice-pdf" name="pdf" type="file" accept=".pdf,application/pdf" class="${ui.input}">
-          <p class="mt-1 text-xs text-slate-500">PDF only, up to 10 MB. Anyone can open it by clicking the notice text.</p>
+          <p class="mt-1 text-xs text-slate-500">${api.mode === "live" ? "PDF only, up to 10 MB. Anyone can open it by clicking the notice text." : "PDF only, up to 10 MB. Demo uploads are stored in this browser; use live mode to share them."}</p>
         </div>` : ""}
-        ${role === "principal" && api.mode === "demo" ? `<p class="sm:col-span-2 text-xs text-slate-500">PDF uploads require the shared Django backend. Demo notices open a generated PDF in this browser.</p>` : ""}
         <div class="sm:col-span-2"><button type="submit" class="${ui.btnPrimary}">${icon("plus", 16)} Post notice</button></div>
       </form>` : ""}
       <section class="${ui.card} overflow-hidden">
@@ -118,18 +117,23 @@ export async function render({ mount, stale }) {
     const category = data.get("category").trim();
     const body = data.get("body").trim();
     try {
-      let notice;
-      if (api.mode === "live") {
-        const pdf = data.get("pdf");
-        if (pdf?.size > MAX_PDF_BYTES) {
-          toast("PDF files must be 10 MB or smaller.", "error");
+      data.set("title", title);
+      data.set("category", category);
+      data.set("body", body);
+      const pdf = data.get("pdf");
+      if (pdf?.size > MAX_PDF_BYTES) {
+        toast("PDF files must be 10 MB or smaller.", "error");
+        return;
+      }
+      if (pdf?.size) {
+        if (!pdf.name.toLowerCase().endsWith(".pdf") || await pdf.slice(0, 5).text() !== "%PDF-") {
+          toast("Choose a valid PDF file.", "error");
           return;
         }
-        if (!pdf?.size) data.delete("pdf");
-        notice = await api.notices.create(data);
       } else {
-        notice = await api.notices.create({ title, category, body });
+        data.delete("pdf");
       }
+      const notice = await api.notices.create(data);
       if (stale()) return;
       notices.push(notice);
       paint();

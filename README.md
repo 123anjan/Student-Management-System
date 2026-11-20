@@ -15,7 +15,7 @@ GitHub Pages can only serve static files, so the front-end has two modes, set in
 
 | `MODE` | Where data lives | Use it for |
 |---|---|---|
-| `"demo"` | The visitor's browser (localStorage), via a built-in fake server | The live GitHub Pages site. |
+| `"demo"` | The visitor's browser (localStorage; PDF attachments in IndexedDB) | The live GitHub Pages site. |
 | `"live"` | The Django REST API and its database | Real use, local or on your own server |
 
 Demo accounts (the password follows the username as `role123`, except the legacy admin):
@@ -28,7 +28,7 @@ Demo accounts (the password follows the username as `role123`, except the legacy
 - `accountant` / `accountant123` — Accountant
 - `librarian` / `librarian123` — Librarian
 
-Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, principal reports, and notices for everyone. Clicking anywhere on a notice's text opens its PDF. In live mode, the Principal can attach a PDF (up to 10 MB) and it is stored by Django for everyone to view; other staff can post text notices. In demo mode, notices are saved in the current browser and open a generated PDF. Admissions, finance, and library records are also demo-only; the Django API manages the shared student, course, attendance, grade, and live notice records.
+Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, principal reports, and notices for everyone. Clicking anywhere on a notice's text opens its PDF. Only the Principal sees the PDF attachment option; live-mode uploads (up to 10 MB) are stored by Django for everyone to view, while demo uploads are stored in that browser only. Notices without an attached file open a generated PDF. Admissions, finance, and library records are also demo-only; the Django API manages the shared student, course, attendance, grade, and live notice records.
 
 The screens never know which mode is active; they call `api.js`, which picks the right data source. Read [`docs/UNDERSTANDING.md`](docs/UNDERSTANDING.md) for the full explanation.
 

@@ -59,3 +59,60 @@ export const portalStore = {
     return row;
   },
 };
+
+const NOTICE_FILE_DB = "edutrack_notice_files_v1";
+const NOTICE_FILE_STORE = "pdfs";
+
+function openNoticeFileDb() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(NOTICE_FILE_DB, 1);
+    request.onupgradeneeded = () => {
+      if (!request.result.objectStoreNames.contains(NOTICE_FILE_STORE)) {
+        request.result.createObjectStore(NOTICE_FILE_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error || new Error("Could not open notice file storage."));
+  });
+}
+
+async function noticeFileTransaction(mode, operation) {
+  const db = await openNoticeFileDb();
+  return new Promise((resolve, reject) => {
+    let result;
+    const transaction = db.transaction(NOTICE_FILE_STORE, mode);
+    let request;
+    try {
+      request = operation(transaction.objectStore(NOTICE_FILE_STORE));
+    } catch (error) {
+      db.close();
+      reject(error);
+      return;
+    }
+    if (request) request.onsuccess = () => { result = request.result; };
+    transaction.oncomplete = () => {
+      db.close();
+      resolve(result);
+    };
+    transaction.onerror = () => {
+      db.close();
+      reject(transaction.error || request?.error || new Error("Could not access notice file storage."));
+    };
+    transaction.onabort = () => {
+      db.close();
+      reject(transaction.error || new Error("Notice file storage was interrupted."));
+    };
+  });
+}
+
+export const noticeFileStore = {
+  save(key, file) {
+    return noticeFileTransaction("readwrite", (store) => store.put(file, key));
+  },
+  get(key) {
+    return noticeFileTransaction("readonly", (store) => store.get(key));
+  },
+  remove(key) {
+    return noticeFileTransaction("readwrite", (store) => store.delete(key));
+  },
+};

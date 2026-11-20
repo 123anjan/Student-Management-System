@@ -13,13 +13,24 @@
 
 import { ApiError, fieldError } from "./errors.js";
 import { letterFor, percent, LETTERS } from "./grading.js";
-import { portalStore } from "./portal-store.js";
+import { noticeFileStore, portalStore } from "./portal-store.js";
 
 const DB_KEY = "edutrack_demo_db_v1";
+const NOTICE_PDF_URLS = new Map();
 let db = null;
 
 const delay = (ms = 90) => new Promise((resolve) => setTimeout(resolve, ms)); // feels like a network call
 const clone = (value) => structuredClone(value); // never hand out the live objects
+
+async function noticePdfUrl(notice) {
+  if (!notice.pdf_key) return null;
+  if (!NOTICE_PDF_URLS.has(notice.pdf_key)) {
+    const file = await noticeFileStore.get(notice.pdf_key);
+    if (!file) throw new ApiError("The attached notice PDF could not be found in this browser.", 404);
+    NOTICE_PDF_URLS.set(notice.pdf_key, URL.createObjectURL(file));
+  }
+  return NOTICE_PDF_URLS.get(notice.pdf_key);
+}
 
 // ---------------------------------------------------------------------------
 // Persistence
@@ -470,17 +481,43 @@ export const demoApi = {
     async list() {
       requireDemoRole(["principal", "registrar", "teacher", "student", "accountant", "librarian"]);
       await delay();
-      return clone(portalStore.list("notices").map((notice) => ({ ...notice, pdf_url: null })));
+      const notices = await Promise.all(portalStore.list("notices").map(async (notice) => ({
+        ...notice,
+        pdf_url: await noticePdfUrl(notice),
+      })));
+      return clone(notices);
     },
     async create(data) {
       requireDemoRole(["principal", "registrar", "teacher"]);
       await delay();
-      const notice = portalStore.add("notices", {
-        ...data,
-        date: isoDay(new Date()),
-        author: localStorage.getItem("edutrack_user") || "admin",
-      });
-      return clone({ ...notice, pdf_url: null });
+      const file = data.get("pdf");
+      if (file?.size) {
+        const role = localStorage.getItem("edutrack_role") || "principal";
+        if (role !== "principal") throw new ApiError("Only the Principal can attach a PDF.", 403);
+        if (file.size > 10 * 1024 * 1024) throw new ApiError("PDF files must be 10 MB or smaller.", 400);
+        if (!file.name.toLowerCase().endsWith(".pdf") || await file.slice(0, 5).text() !== "%PDF-") {
+          throw new ApiError("Choose a valid PDF file.", 400);
+        }
+      }
+      const pdfKey = file?.size ? `notice-${Date.now()}-${Math.random().toString(36).slice(2)}` : null;
+      const pdfUrl = file?.size ? URL.createObjectURL(file) : null;
+      try {
+        if (pdfKey) await noticeFileStore.save(pdfKey, file);
+        const notice = portalStore.add("notices", {
+          title: data.get("title").trim(),
+          category: data.get("category").trim(),
+          body: data.get("body").trim(),
+          date: isoDay(new Date()),
+          author: localStorage.getItem("edutrack_user") || "admin",
+          ...(pdfKey ? { pdf_key: pdfKey } : {}),
+        });
+        if (pdfKey) NOTICE_PDF_URLS.set(pdfKey, pdfUrl);
+        return clone({ ...notice, pdf_url: pdfUrl });
+      } catch (error) {
+        if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        if (pdfKey) await noticeFileStore.remove(pdfKey);
+        throw error;
+      }
     },
   },
 };
