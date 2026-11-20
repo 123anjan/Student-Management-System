@@ -14,7 +14,7 @@ export async function render({ el, stale, mount }) {
     ${pageHeader(
       "Courses",
       "The subjects students can enrol in.",
-      ${canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}">${icon("plus", 16)} Add course</button>` : ""}`
+      canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}">${icon("plus", 16)} Add course</button>` : ""
     )}
     <div id="c-grid"></div>
   `);

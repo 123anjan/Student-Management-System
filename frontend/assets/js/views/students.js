@@ -14,7 +14,7 @@ import {
   debounce, openModal, confirmDialog, toast, downloadCSV, selectBox, pager,
 } from "../ui.js";
 
-const state = { rows: [], courses: [], q: "", status: "", course: "", sort: "name", page: 1 };
+const state = { rows: [], courses: [], q: "", status: "", course: "", sort: "name", page: 1, canManage: false };
 let page = null; // the DOM element of the screen that is currently shown
 
 const fullName = (s) => `${s.first_name} ${s.last_name}`;
@@ -39,17 +39,16 @@ function visibleRows() {
 
 export async function render({ el, stale, mount }) {
   el.innerHTML = skeleton(5);
-  const canManage = ["principal", "registrar"].includes(api.role());
   const [rows, courses] = await Promise.all([api.students.list(), api.courses.list()]);
   if (stale()) return;
-  Object.assign(state, { rows, courses, page: 1 });
+  Object.assign(state, { rows, courses, page: 1, canManage: ["principal", "registrar"].includes(api.role()) });
 
   page = mount(`
     ${pageHeader(
       "Students",
       "Add, search and manage every student record.",
       `<button type="button" data-act="export" class="${ui.btnGhost}">${icon("download", 16)} Export CSV</button>
-       ${canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}">${icon("plus", 16)} Add student</button>` : ""}`
+       ${state.canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}">${icon("plus", 16)} Add student</button>` : ""}`
     )}
     <div class="${ui.card} overflow-hidden">
       <div class="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-800 md:grid-cols-2 xl:grid-cols-[1fr_auto_auto_auto]">
@@ -119,7 +118,7 @@ function paint() {
       <td class="whitespace-nowrap px-4 py-3 text-slate-500 dark:text-slate-400">${fmtDate(s.enrolled_on)}</td>
       <td class="px-4 py-3">
         <div class="flex justify-end gap-1">
-          ${canManage ? `<button type="button" data-act="edit" data-id="${s.id}" class="${ui.btnIcon}" aria-label="Edit ${esc(fullName(s))}">${icon("pencil", 16)}</button>
+          ${state.canManage ? `<button type="button" data-act="edit" data-id="${s.id}" class="${ui.btnIcon}" aria-label="Edit ${esc(fullName(s))}">${icon("pencil", 16)}</button>
           <button type="button" data-act="delete" data-id="${s.id}" class="${ui.btnIcon} hover:!bg-rose-50 hover:!text-rose-600 dark:hover:!bg-rose-500/10" aria-label="Delete ${esc(fullName(s))}">${icon("trash", 16)}</button>` : ""}
         </div>
       </td>

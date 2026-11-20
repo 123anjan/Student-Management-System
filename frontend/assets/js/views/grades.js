@@ -18,7 +18,7 @@ export async function render({ el, stale, mount }) {
     ${pageHeader(
       "Grades",
       "Record assessment scores. Letter grades are calculated automatically.",
-      ${canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}" ${courses.length ? "" : "disabled"}>${icon("plus", 16)} Add grade</button>` : ""}`
+      canManage ? `<button type="button" data-act="add" class="${ui.btnPrimary}" ${courses.length ? "" : "disabled"}>${icon("plus", 16)} Add grade</button>` : ""
     )}
     <div class="${ui.card} overflow-hidden">
       <div class="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-slate-800 sm:flex-row sm:items-center">
