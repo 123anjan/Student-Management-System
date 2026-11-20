@@ -38,7 +38,8 @@ function clearSession() {
 // LIVE mode: real HTTP calls to the Django REST API
 // -----------------------------------------------------------------------------
 async function request(path, { method = "GET", body, auth = true } = {}) {
-  const headers = { "Content-Type": "application/json" };
+  const isFormData = body instanceof FormData;
+  const headers = isFormData ? {} : { "Content-Type": "application/json" };
   const token = store.get(TOKEN_KEY);
   // DRF "Token" authentication expects:  Authorization: Token <key>
   if (auth && token) headers.Authorization = `Token ${token}`;
@@ -48,7 +49,7 @@ async function request(path, { method = "GET", body, auth = true } = {}) {
     response = await fetch(`${CONFIG.API_BASE_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : isFormData ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError("Cannot reach the server. Is the Django backend running and is API_BASE_URL correct?", 0);
@@ -93,6 +94,10 @@ const liveApi = {
     save: (payload) => request("/attendance/bulk/", { method: "POST", body: payload }),
   },
   grades: crud("/grades"),
+  notices: {
+    list: () => request("/notices/"),
+    create: (formData) => request("/notices/", { method: "POST", body: formData }),
+  },
 };
 
 // -----------------------------------------------------------------------------
@@ -108,6 +113,7 @@ export const api = {
   courses: backend.courses,
   attendance: backend.attendance,
   grades: backend.grades,
+  notices: backend.notices,
 
   auth: {
     isAuthenticated: () => Boolean(store.get(TOKEN_KEY)),

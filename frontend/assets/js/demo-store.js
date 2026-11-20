@@ -13,6 +13,7 @@
 
 import { ApiError, fieldError } from "./errors.js";
 import { letterFor, percent, LETTERS } from "./grading.js";
+import { portalStore } from "./portal-store.js";
 
 const DB_KEY = "edutrack_demo_db_v1";
 let db = null;
@@ -462,6 +463,24 @@ export const demoApi = {
       db.grades = db.grades.filter((g) => g.id !== Number(id));
       save();
       return null;
+    },
+  },
+
+  notices: {
+    async list() {
+      requireDemoRole(["principal", "registrar", "teacher", "student", "accountant", "librarian"]);
+      await delay();
+      return clone(portalStore.list("notices").map((notice) => ({ ...notice, pdf_url: null })));
+    },
+    async create(data) {
+      requireDemoRole(["principal", "registrar", "teacher"]);
+      await delay();
+      const notice = portalStore.add("notices", {
+        ...data,
+        date: isoDay(new Date()),
+        author: localStorage.getItem("edutrack_user") || "admin",
+      });
+      return clone({ ...notice, pdf_url: null });
     },
   },
 };

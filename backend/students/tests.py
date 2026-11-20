@@ -2,10 +2,15 @@
 Automated tests. Run with:  python manage.py test
 Each test starts from an EMPTY temporary database, so tests never touch real data.
 """
+import tempfile
+
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
+from django.urls import reverse
 from rest_framework.test import APITestCase
 
-from .models import Attendance, Course, Grade, Student
+from .models import Attendance, Course, Grade, Notice, Student
 from .views import LoginView
 
 
@@ -147,3 +152,83 @@ class ApiTests(APITestCase):
         self.assertEqual(data["average_score"], 92.0)
         self.assertEqual(data["grade_distribution"]["A"], 1)
         self.assertEqual(data["attendance_by_course"], [{"course": "CS101", "rate": 50.0}])
+
+
+class NoticeApiTests(APITestCase):
+    def setUp(self):
+        self.media_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(self.media_dir.cleanup)
+        media_settings = override_settings(MEDIA_ROOT=self.media_dir.name)
+        media_settings.enable()
+        self.addCleanup(media_settings.disable)
+        self.principal = get_user_model().objects.create_user(
+            "head", email="head@example.edu", password="s3cret-pass"
+        )
+        self.principal.role_profile.role = "principal"
+        self.principal.role_profile.save()
+        self.client.force_authenticate(user=self.principal)
+
+    def pdf_file(self, name="notice.pdf", content=b"%PDF-1.4\nnotice\n%%EOF"):
+        return SimpleUploadedFile(name, content, content_type="application/pdf")
+
+    def test_principal_can_upload_pdf_and_anyone_can_open_it_inline(self):
+        response = self.client.post(
+            "/api/notices/",
+            {
+                "title": "Exam schedule",
+                "category": "Academics",
+                "body": "See the attached schedule.",
+                "pdf": self.pdf_file(),
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertTrue(response.data["pdf_url"].endswith(f"/api/notices/{response.data['id']}/pdf/"))
+
+        self.client.force_authenticate(user=None)
+        download = self.client.get(reverse("notice-pdf", kwargs={"pk": response.data["id"]}))
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download["Content-Type"], "application/pdf")
+        self.assertTrue(download["Content-Disposition"].startswith("inline;"))
+        self.assertTrue(b"".join(download.streaming_content).startswith(b"%PDF-1.4"))
+
+    def test_teacher_can_post_text_but_cannot_attach_pdf(self):
+        teacher = get_user_model().objects.create_user("teacher", password="s3cret-pass")
+        teacher.role_profile.role = "teacher"
+        teacher.role_profile.save()
+        self.client.force_authenticate(user=teacher)
+        payload = {"title": "Meeting", "category": "Staff", "body": "Staff meeting Friday."}
+        response = self.client.post("/api/notices/", payload, format="multipart")
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertIsNone(response.data["pdf_url"])
+
+        payload["pdf"] = self.pdf_file()
+        response = self.client.post("/api/notices/", payload, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("pdf", response.data)
+        self.assertEqual(Notice.objects.count(), 1)
+
+    def test_student_can_read_notices_but_cannot_post(self):
+        student = get_user_model().objects.create_user("learner", password="s3cret-pass")
+        student.role_profile.role = "student"
+        student.role_profile.save()
+        self.client.force_authenticate(user=student)
+        self.assertEqual(self.client.get("/api/notices/").status_code, 200)
+        response = self.client.post(
+            "/api/notices/",
+            {"title": "No", "category": "Test", "body": "Not allowed."},
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_upload_rejects_non_pdf_and_invalid_pdf_signature(self):
+        payload = {"title": "Invalid", "category": "Test", "body": "Invalid upload."}
+        payload["pdf"] = self.pdf_file("notice.txt", b"not a PDF")
+        response = self.client.post("/api/notices/", payload, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("pdf", response.data)
+
+        payload["pdf"] = self.pdf_file(content=b"not a PDF")
+        response = self.client.post("/api/notices/", payload, format="multipart")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("pdf", response.data)

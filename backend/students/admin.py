@@ -1,7 +1,7 @@
 """Registers the models in Django's built-in admin site at /admin/ (free data editor)."""
 from django.contrib import admin
 
-from .models import Attendance, Course, Grade, Student
+from .models import Attendance, Course, Grade, Notice, Student
 
 
 @admin.register(Course)
@@ -28,3 +28,10 @@ class AttendanceAdmin(admin.ModelAdmin):
 class GradeAdmin(admin.ModelAdmin):
     list_display = ("student", "course", "title", "score", "max_score", "date")
     list_filter = ("course",)
+
+
+@admin.register(Notice)
+class NoticeAdmin(admin.ModelAdmin):
+    list_display = ("title", "category", "date", "author")
+    list_filter = ("category", "date")
+    search_fields = ("title", "body", "author")

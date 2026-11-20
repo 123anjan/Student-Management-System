@@ -9,23 +9,24 @@ the router in urls.py turns it into the URLs the front-end calls:
 """
 from django.db import transaction
 from django.db.models import Count, Q, Sum
+from django.http import FileResponse
 from rest_framework import mixins, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.serializers import AuthTokenSerializer
 from rest_framework.decorators import action
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, BasePermission
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
-from rest_framework.permissions import BasePermission
 
 from .grading import LETTERS, letter_for, percent
-from .models import Attendance, Course, Grade, Student, UserProfile
+from .models import Attendance, Course, Grade, Notice, Student, UserProfile
 from .serializers import (
     AttendanceBulkSerializer,
     AttendanceSerializer,
     CourseSerializer,
     GradeSerializer,
+    NoticeSerializer,
     StudentSerializer,
 )
 
@@ -75,6 +76,47 @@ class LoginView(APIView):
         profile = getattr(user, "role_profile", None)
         role = profile.role if profile else ("principal" if user.is_superuser else "teacher")
         return Response({"username": user.username, "token": token.key, "role": role})
+
+
+class NoticePermission(BasePermission):
+    def has_permission(self, request, view):
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.method in ("GET", "HEAD", "OPTIONS"):
+            return True
+        if request.method == "POST":
+            if request.user.is_superuser:
+                return True
+            profile = getattr(request.user, "role_profile", None)
+            return getattr(profile, "role", None) in {"principal", "registrar", "teacher"}
+        return False
+
+
+class NoticeViewSet(mixins.ListModelMixin, mixins.CreateModelMixin, viewsets.GenericViewSet):
+    queryset = Notice.objects.all()
+    serializer_class = NoticeSerializer
+    permission_classes = [NoticePermission]
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user.username)
+
+    @action(
+        detail=True,
+        methods=["get"],
+        permission_classes=[AllowAny],
+        url_path="pdf",
+        url_name="pdf",
+    )
+    def pdf(self, request, pk=None):
+        notice = self.get_object()
+        if not notice.pdf:
+            return Response({"detail": "This notice has no attached PDF."}, status=status.HTTP_404_NOT_FOUND)
+        return FileResponse(
+            notice.pdf.open("rb"),
+            content_type="application/pdf",
+            as_attachment=False,
+            filename=notice.pdf.name.rsplit("/", 1)[-1],
+        )
 
 
 class StudentViewSet(viewsets.ModelViewSet):

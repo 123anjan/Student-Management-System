@@ -43,6 +43,21 @@ def create_user_profile(sender, instance, created, **kwargs):
         )
 
 
+class Notice(models.Model):
+    title = models.CharField(max_length=180)
+    category = models.CharField(max_length=80)
+    body = models.TextField()
+    date = models.DateField(default=date.today)
+    author = models.CharField(max_length=150)
+    pdf = models.FileField(upload_to="notices/%Y/%m/", blank=True)
+
+    class Meta:
+        ordering = ["-date", "-id"]
+
+    def __str__(self):
+        return self.title
+
+
 class Course(models.Model):
     code = models.CharField(max_length=20, unique=True)
     name = models.CharField(max_length=120)

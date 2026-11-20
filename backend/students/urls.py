@@ -7,6 +7,7 @@ from .views import (
     DashboardView,
     GradeViewSet,
     LoginView,
+    NoticeViewSet,
     StudentViewSet,
 )
 
@@ -16,6 +17,7 @@ router.register("students", StudentViewSet, basename="student")
 router.register("courses", CourseViewSet, basename="course")
 router.register("grades", GradeViewSet, basename="grade")
 router.register("attendance", AttendanceViewSet, basename="attendance")
+router.register("notices", NoticeViewSet, basename="notice")
 
 urlpatterns = [
     path("auth/login/", LoginView.as_view(), name="login"),

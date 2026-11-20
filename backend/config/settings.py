@@ -127,6 +127,8 @@ USE_TZ = True
 # --- static files -----------------------------------------------------------
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"  # `collectstatic` copies files here
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Optional: let this one Django app ALSO serve the front-end, so a single
 # deployment (e.g. on Hostinger) hosts both. WhiteNoise serves every file of

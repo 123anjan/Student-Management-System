@@ -1,9 +1,9 @@
 import { api } from "../api.js";
 import { icon } from "../icons.js";
 import { ui, esc, field, pageHeader, toast } from "../ui.js";
-import { portalStore } from "../portal-store.js";
 
 const canPost = (role) => ["principal", "registrar", "teacher"].includes(role);
+const MAX_PDF_BYTES = 10 * 1024 * 1024;
 
 function pdfText(value) {
   return String(value ?? "")
@@ -70,61 +70,89 @@ function createPdf(notice) {
   return new Blob([pdf], { type: "application/pdf" });
 }
 
-function downloadNotice(notice) {
-  const url = URL.createObjectURL(createPdf(notice));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `${notice.title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "notice"}.pdf`;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+function generatedPdfUrl(notice) {
+  return URL.createObjectURL(createPdf(notice));
 }
 
-export async function render({ mount }) {
+export async function render({ mount, stale }) {
   const role = api.role();
   const page = mount(`<div id="notices-page"></div>`);
+  let notices = await api.notices.list();
+  if (stale()) return;
+
   const paint = () => {
-    const notices = [...portalStore.list("notices")].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+    const orderedNotices = [...notices].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
     page.innerHTML = `
-      ${pageHeader("Notices", "School announcements for students, staff and families.", `<span class="${ui.btnGhost}">${notices.length} notices</span>`)}
+      ${pageHeader("Notices", "School announcements for students, staff and families.", `<span class="${ui.btnGhost}">${orderedNotices.length} notices</span>`)}
       ${canPost(role) ? `<form id="notice-form" class="${ui.card} mb-5 grid gap-3 p-4 sm:grid-cols-2">
         ${field({ label: "Notice title", name: "title", required: true, placeholder: "Announcement title", span: "sm:col-span-2" })}
         ${field({ label: "Category", name: "category", required: true, placeholder: "Academics, Campus, Events..." })}
         ${field({ label: "Notice text", name: "body", type: "textarea", required: true, placeholder: "Write the full notice here.", span: "sm:col-span-2" })}
+        ${role === "principal" && api.mode === "live" ? `<div class="sm:col-span-2">
+          <label for="notice-pdf" class="${ui.label}">Attach PDF (optional)</label>
+          <input id="notice-pdf" name="pdf" type="file" accept=".pdf,application/pdf" class="${ui.input}">
+          <p class="mt-1 text-xs text-slate-500">PDF only, up to 10 MB. Anyone can open it by clicking the notice text.</p>
+        </div>` : ""}
+        ${role === "principal" && api.mode === "demo" ? `<p class="sm:col-span-2 text-xs text-slate-500">PDF uploads require the shared Django backend. Demo notices open a generated PDF in this browser.</p>` : ""}
         <div class="sm:col-span-2"><button type="submit" class="${ui.btnPrimary}">${icon("plus", 16)} Post notice</button></div>
       </form>` : ""}
       <section class="${ui.card} overflow-hidden">
-        <div class="border-b border-slate-200 p-4 dark:border-slate-800"><h2 class="font-semibold">All notices</h2><p class="mt-1 text-sm text-slate-500">Select a notice title to download its PDF.</p></div>
-        <div class="divide-y divide-slate-100 dark:divide-slate-800">${notices.length ? notices.map((notice) => `
+        <div class="border-b border-slate-200 p-4 dark:border-slate-800"><h2 class="font-semibold">All notices</h2><p class="mt-1 text-sm text-slate-500">Click anywhere on a notice's text to open its PDF.</p></div>
+        <div class="divide-y divide-slate-100 dark:divide-slate-800">${orderedNotices.length ? orderedNotices.map((notice) => `
           <article class="p-5">
             <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500"><span class="rounded-full bg-indigo-50 px-2.5 py-1 font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">${esc(notice.category)}</span><time datetime="${esc(notice.date)}">${esc(notice.date)}</time><span>Posted by ${esc(notice.author)}</span></div>
-            <h3 class="mt-3 text-lg font-semibold"><a href="#" data-download="${notice.id}" aria-label="Download notice PDF: ${esc(notice.title)}" class="text-indigo-700 underline decoration-indigo-300 underline-offset-4 hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-200">${esc(notice.title)}</a></h3>
-            <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">${esc(notice.body)}</p>
+            <a href="${esc(notice.pdf_url || "#")}" ${notice.pdf_url ? "" : `data-open-generated="${notice.id}"`} target="_blank" rel="noopener noreferrer" aria-label="Open notice PDF: ${esc(notice.title)}" class="block cursor-pointer text-inherit no-underline hover:no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400">
+              <h3 class="mt-3 text-lg font-semibold text-slate-900 dark:text-white">${esc(notice.title)}</h3>
+              <p class="mt-2 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">${esc(notice.body)}</p>
+            </a>
           </article>`).join("") : `<p class="p-6 text-sm text-slate-500">No notices have been posted yet.</p>`}</div>
       </section>`;
   };
 
-  page.addEventListener("submit", (event) => {
+  page.addEventListener("submit", async (event) => {
     if (event.target.id !== "notice-form") return;
     event.preventDefault();
-    const data = new FormData(event.target);
-    portalStore.add("notices", {
-      title: data.get("title").trim(),
-      category: data.get("category").trim(),
-      body: data.get("body").trim(),
-      date: new Date().toISOString().slice(0, 10),
-      author: api.auth.username(),
-    });
-    paint();
-    toast("Notice posted.");
+    const form = event.target;
+    const data = new FormData(form);
+    const title = data.get("title").trim();
+    const category = data.get("category").trim();
+    const body = data.get("body").trim();
+    try {
+      let notice;
+      if (api.mode === "live") {
+        const pdf = data.get("pdf");
+        if (pdf?.size > MAX_PDF_BYTES) {
+          toast("PDF files must be 10 MB or smaller.", "error");
+          return;
+        }
+        if (!pdf?.size) data.delete("pdf");
+        notice = await api.notices.create(data);
+      } else {
+        notice = await api.notices.create({ title, category, body });
+      }
+      if (stale()) return;
+      notices.push(notice);
+      paint();
+      toast("Notice posted.");
+    } catch (error) {
+      toast(error.message, "error");
+    }
   });
-  page.addEventListener("click", (event) => {
-    const link = event.target.closest("[data-download]");
+  const prepareGeneratedPdfLink = (event) => {
+    if (event.type === "keydown" && event.key !== "Enter") return;
+    const link = event.target.closest("[data-open-generated]");
     if (!link) return;
-    event.preventDefault();
-    const notice = portalStore.list("notices").find((item) => item.id === Number(link.dataset.download));
-    if (notice) downloadNotice(notice);
-  });
+    const notice = notices.find((item) => item.id === Number(link.dataset.openGenerated));
+    if (!notice) return;
+    const url = generatedPdfUrl(notice);
+    link.href = url;
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+      if (link.href === url) link.href = "#";
+    }, 60000);
+  };
+  page.addEventListener("pointerdown", prepareGeneratedPdfLink);
+  page.addEventListener("focusin", prepareGeneratedPdfLink);
+  page.addEventListener("keydown", prepareGeneratedPdfLink);
   paint();
 }

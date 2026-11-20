@@ -28,7 +28,7 @@ Demo accounts (the password follows the username as `role123`, except the legacy
 - `accountant` / `accountant123` — Accountant
 - `librarian` / `librarian123` — Librarian
 
-Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, principal reports, and notices for everyone. Notice titles are clickable PDF downloads. In demo mode, notices are saved in the current browser. Admissions, finance, and library records are also demo-only; the Django API manages the shared student, course, attendance, and grade records.
+Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, principal reports, and notices for everyone. Clicking anywhere on a notice's text opens its PDF. In live mode, the Principal can attach a PDF (up to 10 MB) and it is stored by Django for everyone to view; other staff can post text notices. In demo mode, notices are saved in the current browser and open a generated PDF. Admissions, finance, and library records are also demo-only; the Django API manages the shared student, course, attendance, grade, and live notice records.
 
 The screens never know which mode is active; they call `api.js`, which picks the right data source. Read [`docs/UNDERSTANDING.md`](docs/UNDERSTANDING.md) for the full explanation.
 
@@ -108,12 +108,13 @@ Hostinger documents [installing Django on a VPS](https://www.hostinger.com/tutor
 4. `python manage.py migrate`, `python manage.py collectstatic --noinput`, `python manage.py seed_demo --password "..."`.
 5. Run with `gunicorn config.wsgi:application` behind Nginx with HTTPS (a free Let's Encrypt certificate).
 6. In `config.js` set `MODE: "live"` and `API_BASE_URL: "/api"`.
+7. Keep Django's `MEDIA_ROOT` (`backend/media/` by default) on persistent storage. Django streams notice PDFs from a public inline-PDF endpoint, so users do not need a token in the new tab.
 
 **Option B - split hosting:** keep the front-end on GitHub Pages and the API on its own domain. Set `API_BASE_URL: "https://api.your-domain.com/api"` and add `https://<your-username>.github.io` to `CORS_ALLOWED_ORIGINS` in `.env`.
 
 ## API reference
 
-All routes except login need the header `Authorization: Token <key>`.
+All API routes except login and the public notice-PDF endpoint need the header `Authorization: Token <key>`.
 
 | Method and path | Purpose |
 |---|---|
@@ -125,6 +126,8 @@ All routes except login need the header `Authorization: Token <key>`.
 | `GET /api/attendance/` | Filters `course`, `date`, `student` |
 | `POST /api/attendance/bulk/` | Save a class: `{course, date, records:[{student,status}]}` |
 | `GET/POST /api/grades/`, `PUT/DELETE /api/grades/<id>/` | Grades |
+| `GET/POST /api/notices/` | List notices / post a notice (Principal, Registrar, or Teacher); only the Principal may attach a PDF |
+| `GET /api/notices/<id>/pdf/` | Open an attached PDF inline (public notice file) |
 
 ## Security checklist before real use
 

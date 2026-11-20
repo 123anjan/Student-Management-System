@@ -6,13 +6,46 @@ Serializers do two jobs:
 Validation errors come back as {"field": ["message"]} with HTTP 400, which the
 front-end (errors.js) turns into a readable sentence.
 """
+from django.urls import reverse
+
 from rest_framework import serializers
 
-from .models import Attendance, Course, Grade, Student
+from .models import Attendance, Course, Grade, Notice, Student
 
 
 class UserProfileSerializer(serializers.Serializer):
     role = serializers.CharField()
+
+
+class NoticeSerializer(serializers.ModelSerializer):
+    pdf = serializers.FileField(write_only=True, required=False)
+    pdf_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notice
+        fields = ["id", "title", "category", "body", "date", "author", "pdf", "pdf_url"]
+        read_only_fields = ["id", "author", "pdf_url"]
+
+    def get_pdf_url(self, obj):
+        if not obj.pdf:
+            return None
+        path = reverse("notice-pdf", kwargs={"pk": obj.pk})
+        request = self.context.get("request")
+        return request.build_absolute_uri(path) if request else path
+
+    def validate_pdf(self, value):
+        if value.size > 10 * 1024 * 1024:
+            raise serializers.ValidationError("PDF files must be 10 MB or smaller.")
+        if not value.name.lower().endswith(".pdf"):
+            raise serializers.ValidationError("Upload a PDF file.")
+        if value.read(5) != b"%PDF-":
+            raise serializers.ValidationError("The uploaded file is not a valid PDF.")
+        value.seek(0)
+        request = self.context.get("request")
+        profile = getattr(request.user, "role_profile", None) if request else None
+        if request and not request.user.is_superuser and getattr(profile, "role", None) != "principal":
+            raise serializers.ValidationError("Only the Principal can attach a PDF.")
+        return value
 
 
 class CourseSerializer(serializers.ModelSerializer):
