@@ -28,7 +28,7 @@ Demo accounts (the password follows the username as `role123`, except the legacy
 - `accountant` / `accountant123` — Accountant
 - `librarian` / `librarian123` — Librarian
 
-Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, and principal reports. Admissions, finance, and library portal data is demo-only and saved in the current browser; the Django API manages the shared student, course, attendance, and grade records.
+Role workspaces include admissions intake, fee/payment tracking, library catalogue and circulation, teacher class tools, student academic records, principal reports, and notices for everyone. Notice titles are clickable PDF downloads. In demo mode, notices are saved in the current browser. Admissions, finance, and library records are also demo-only; the Django API manages the shared student, course, attendance, and grade records.
 
 The screens never know which mode is active; they call `api.js`, which picks the right data source. Read [`docs/UNDERSTANDING.md`](docs/UNDERSTANDING.md) for the full explanation.
 

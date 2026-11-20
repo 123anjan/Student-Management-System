@@ -24,15 +24,16 @@ const ROUTES = {
   "/teaching": { label: "Teaching workspace", icon: "dashboard", load: () => import("./views/teaching.js") },
   "/my-records": { label: "My records", icon: "users", load: () => import("./views/my-records.js") },
   "/reports": { label: "Leadership reports", icon: "dashboard", load: () => import("./views/reports.js") },
+  "/notices": { label: "Notices", icon: "book", load: () => import("./views/notices.js") },
 };
 
 const ROLE_ROUTES = {
   principal: Object.keys(ROUTES),
-  teacher: ["/teaching", "/students", "/courses", "/attendance", "/grades"],
-  student: ["/dashboard", "/courses", "/attendance", "/grades", "/my-records"],
-  registrar: ["/dashboard", "/students", "/courses", "/admissions"],
-  accountant: ["/finance"],
-  librarian: ["/library", "/courses"],
+  teacher: ["/teaching", "/students", "/courses", "/attendance", "/grades", "/notices"],
+  student: ["/dashboard", "/courses", "/attendance", "/grades", "/my-records", "/notices"],
+  registrar: ["/dashboard", "/students", "/courses", "/admissions", "/notices"],
+  accountant: ["/finance", "/notices"],
+  librarian: ["/library", "/courses", "/notices"],
 };
 
 const ROLE_HOME = {

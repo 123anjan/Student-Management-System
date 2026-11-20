@@ -18,6 +18,11 @@ const initial = {
     { id: 3, title: "Discrete Mathematics", author: "Kenneth Rosen", code: "BOOK-003", total: 5, available: 5 },
     { id: 4, title: "Clean Code", author: "Robert C. Martin", code: "BOOK-004", total: 4, available: 1 },
   ],
+  notices: [
+    { id: 1, title: "Final examination timetable published", category: "Academics", date: "2026-11-20", author: "Registrar", body: "The final examination timetable for the December 2026 examination period is now available. Students should review their course schedules and contact the Registrar's Office promptly if they find a scheduling conflict." },
+    { id: 2, title: "Library extended hours during examinations", category: "Library", date: "2026-11-18", author: "Librarian", body: "The library will remain open until 9:00 PM on weekdays from November 23 through December 18. Students are reminded to carry their campus identification cards." },
+    { id: 3, title: "Campus maintenance notice", category: "Campus", date: "2026-11-16", author: "Principal", body: "Scheduled electrical maintenance will take place in the east academic building on November 25. Classes in that building will move to their listed alternate rooms." },
+  ],
 };
 
 function read() {
